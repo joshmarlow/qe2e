@@ -1,6 +1,6 @@
 all: check
 
-FORMAT = black --include \.py
+FORMAT = black
 PIP = pip3
 PROJECT = "qe2e"
 PYTHON = python3

@@ -13,7 +13,7 @@ jobs:
         run: make install
 
       - name: Run formatter
-        run: make formatter
+        run: black --check qe2e
 
       - name: Run mypy
         run: make mypy
