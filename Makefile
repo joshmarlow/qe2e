@@ -36,6 +36,7 @@ mypy:  ## Perform type checking
 test:  ## Run tests
 	@echo "Running tests..."
 	@coverage run --branch \
+				  --include=qe2e \
 					-m pytest \
 					-vv \
 					--doctest-modules \
