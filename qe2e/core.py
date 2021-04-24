@@ -4,14 +4,14 @@ from dataclasses import dataclass
 from enum import Enum, auto
 import functools
 import json
-from typing import Any, Dict, List, NamedTuple, Optional, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup  # type: ignore
 import requests
 
 
-RunState: Dict[str, Any] = dict
-RunError = NamedTuple("RunError", [("case", str), ("step", int), ("message", str)])
+RunState = Dict[Any, Any]
+RunError = NamedTuple("RunError", [("case", str), ("step", int), ("message", Any)])
 RunResult = Union[RunError, RunState]
 
 
@@ -40,7 +40,7 @@ class Case:
     steps: List[Step]
 
     @staticmethod
-    def from_dict(dict_: Dict[Any, Any]) -> TestCase:
+    def from_dict(dict_: Dict[Any, Any]) -> Case:
         name = dict_["name"]
         tags = dict_.get("tags", [])
         steps = dict_.get("steps", [])
@@ -51,12 +51,12 @@ class Case:
             steps=list(map(Step.from_dict, steps)),
         )
 
-    def evaluate(self, state: Optional[RunState] = None) -> RunResult:
-        state = state or dict()
+    def evaluate(self, state_opt: Optional[RunState] = None) -> RunResult:
+        state: RunResult = state_opt or dict()
 
         def reduce_step(acc: RunResult, indexed_step: Tuple[int, Step]) -> RunResult:
-            if type(acc) == RunError:
-                return RunError
+            if isinstance(acc, RunError):
+                return acc
             else:
                 (index, step) = indexed_step
                 return step.evaluate(index, acc)
@@ -133,7 +133,7 @@ class PostUrl(Step):
         return cls(**dict_)
 
     def evaluate(self, index: int, state: RunState) -> RunResult:
-        response = requests.post(self.url, body)
+        response = requests.post(self.url, self.body)
         soup = BeautifulSoup(response.content, "html.parser")
         return {
             **state,
@@ -163,7 +163,7 @@ class PatchUrl(Step):
         return cls(**dict_)
 
     def evaluate(self, index: int, state: RunState) -> RunResult:
-        response = requests.patch(self.url, body)
+        response = requests.patch(self.url, self.body)
         soup = BeautifulSoup(response.content, "html.parser")
         return {
             **state,
@@ -196,14 +196,14 @@ class AssertEq(Step):
         if actual == self.expected:
             return {**state, index: {"success": True}}
         else:
-            return {
-                **state,
-                index: {
-                    "success": False,
+            return RunError(
+                case=self.tag(),
+                step=index,
+                message={
                     "expected": self.expected,
                     "actual": actual,
                 },
-            }
+            )
 
 
 @dataclass
@@ -220,16 +220,16 @@ class AssertContains(Step):
         return cls(**dict_)
 
     def evaluate(self, index: int, state: RunState) -> RunResult:
-        actual = lookup_path(self.container, state)
-        if self.content in actual:
+        container = lookup_path(self.container, state)
+        if self.content in container:
             return {**state, index: {"success": True}}
         else:
             return {
                 **state,
                 index: {
                     "success": False,
-                    "expected": self.expected,
-                    "actual": actual,
+                    "content": self.content,
+                    "container": container,
                 },
             }
 

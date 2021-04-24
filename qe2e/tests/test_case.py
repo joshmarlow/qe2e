@@ -1,11 +1,12 @@
-from unittest import TestCase, mock
+import unittest
+from unittest import mock
 
 import requests
 
 from qe2e.core import AssertContains, AssertEq, Case, GetUrl, RunState
 
 
-class TestCase(TestCase):
+class TestCase(unittest.TestCase):
     def setUp(self):
         self.case = Case(
             name="Login screen",
