@@ -2,7 +2,7 @@ all: check
 
 FORMAT = black
 PIP = pip3
-PROJECT = "qe2e"
+PROJECT = qe2e
 PYTHON = python3
 MIN_COVERAGE = 80
 VENV = ".venv"
@@ -36,17 +36,14 @@ mypy:  ## Perform type checking
 test:  ## Run tests
 	@echo "Running tests..."
 	@coverage run --branch \
-				  --include=qe2e \
 					-m pytest \
 					-vv \
 					--doctest-modules \
 					$(PROJECT)
 
 coverage: test  ## Check code coverage for tests
-	@echo "Running tests with covearge..."
-	@coverage report --fail-under=$(MIN_COVERAGE) \
-					--omit=$(VENV_PATH)/*
-	@coverage html --omit=$(VENV_PATH)/*
+	@echo "Checking covearge..."
+	@coverage report --fail-under=$(MIN_COVERAGE) -m
 
 .PHONY: help
 

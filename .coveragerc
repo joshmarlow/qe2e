@@ -1,0 +1,3 @@
+[run]
+include = qe2e/*
+omit = *tests*
