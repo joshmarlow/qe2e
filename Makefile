@@ -7,7 +7,6 @@ PYTHON = python3
 MIN_COVERAGE = 80
 VENV = ".venv"
 VENV_PATH=.venv
-ENGLISH_MODEL=en_core_web_sm
 
 setup_ubuntu: ## Install Python, pip and venv on Ubuntu (sudo required)
 	@echo "Installing ubuntu packages"
@@ -22,12 +21,11 @@ install: setup ## Create virtual environment and install any dependencies
 	@echo "Installing dependencies..."
 	@$(VENV)/bin/activate
 	@$(PIP) install -r requirements.txt
-	@echo "Downloading spacy english model..."
-	@spacy download $(ENGLISH_MODEL)
+	@$(PIP) install -r requirements-dev.txt
 
 check: mypy linter coverage  ## Run type checking (mypy), linting and test coverage
 
-linter:	## Run formatter
+formatter:	## Run formatter
 	@echo "Running formatter..."
 	@$(FORMAT) $(PROJECT)
 
