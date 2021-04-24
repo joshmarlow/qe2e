@@ -3,7 +3,7 @@ from unittest import mock
 
 import requests
 
-from qe2e.core import AssertContains, AssertEq, Case, GetUrl, RunState
+from qe2e.core import AssertContains, AssertEq, Case, Exec, GetUrl, RunState
 
 
 class TestCase(unittest.TestCase):
@@ -12,6 +12,7 @@ class TestCase(unittest.TestCase):
             name="Login screen",
             tags=["no-auth"],
             steps=[
+                Exec(command="ls -a"),
                 GetUrl(
                     response_name="login_response",
                     url="localhost:8000/login",
@@ -49,6 +50,7 @@ class TestCase(unittest.TestCase):
             1: {"success": True},
             2: {"success": True},
             3: {"success": True},
+            4: {"success": True},
             "login_response": {
                 "html": {
                     "content": "\n"
@@ -71,6 +73,10 @@ class TestCase(unittest.TestCase):
         json = {
             "name": "Login screen",
             "steps": [
+                {
+                    "type": "exec",
+                    "command": "ls -a",
+                },
                 {
                     "type": "get_url",
                     "url": "localhost:8000/login",

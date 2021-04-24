@@ -4,14 +4,21 @@ from dataclasses import dataclass
 from enum import Enum, auto
 import functools
 import json
+import subprocess
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from bs4 import BeautifulSoup  # type: ignore
 import requests
 
 
+@dataclass
+class RunError:
+    case: str
+    step: int
+    details: Optional[Any] = None
+
+
 RunState = Dict[Any, Any]
-RunError = NamedTuple("RunError", [("case", str), ("step", int), ("message", Any)])
 RunResult = Union[RunError, RunState]
 
 
@@ -87,6 +94,34 @@ class Step(ABC):
             return subclass_dict[type_].from_dict(dict_)
         else:
             raise Exception(f"Unknown step type - {type_}")
+
+
+@dataclass
+class Exec(Step):
+    command: str
+
+    @classmethod
+    def tag(cls) -> str:
+        return "exec"
+
+    @classmethod
+    def from_dict(cls, dict_: Dict[Any, Any]) -> Step:
+        return cls(**dict_)
+
+    def evaluate(self, index: int, state: RunState) -> RunResult:
+        try:
+            subprocess.call(self.command.split(), check=True)
+        except subprocess.CalledProcessError as e:
+            return RunError(
+                case=self.tag(),
+                step=index,
+                details=e,
+            )
+        finally:
+            return {
+                **state,
+                index: {"success": True},
+            }
 
 
 @dataclass
@@ -199,7 +234,7 @@ class AssertEq(Step):
             return RunError(
                 case=self.tag(),
                 step=index,
-                message={
+                details={
                     "expected": self.expected,
                     "actual": actual,
                 },
@@ -224,14 +259,14 @@ class AssertContains(Step):
         if self.content in container:
             return {**state, index: {"success": True}}
         else:
-            return {
-                **state,
-                index: {
-                    "success": False,
+            return RunError(
+                case=self.tag(),
+                step=index,
+                details={
                     "content": self.content,
                     "container": container,
                 },
-            }
+            )
 
 
 if __name__ == "__main__":
