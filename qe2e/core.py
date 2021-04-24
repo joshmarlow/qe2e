@@ -32,11 +32,11 @@ class Colors:
 
 
 def display_results(result: RunResult) -> Tuple[bool, str]:
-    failed_message = Colors.FAIL + "FAILED"
     if isinstance(result, RunError):
         return (
             False,
-            f"{failed_message} - Error in step {result.step} ({result.case}) - {result.details}",
+            Colors.FAIL
+            + f"FAILED - Error in step {result.step} ({result.case}) - {result.details}",
         )
     else:
         return (True, Colors.PASS + "PASSED")
@@ -256,6 +256,7 @@ class PatchUrl(Step):
 class AssertEq(Step):
     actual: str
     expected: Any
+    invert: Optional[bool] = False
 
     @classmethod
     def tag(cls) -> str:
@@ -274,7 +275,7 @@ class AssertEq(Step):
                 step=index,
                 details=f"Could not find data at path '{self.actual}'",
             )
-        if actual == self.expected:
+        if actual == self.expected or self.invert:
             return {**state, index: {"success": True}}
         else:
             return RunError(
@@ -283,6 +284,9 @@ class AssertEq(Step):
                 details={
                     "expected": self.expected,
                     "actual": actual,
+                    "error": "expected content to be " + "absent"
+                    if self.invert
+                    else "present",
                 },
             )
 
@@ -291,6 +295,7 @@ class AssertEq(Step):
 class AssertContains(Step):
     container: str
     content: str
+    invert: Optional[bool] = False
 
     @classmethod
     def tag(cls) -> str:
@@ -302,17 +307,23 @@ class AssertContains(Step):
 
     def evaluate(self, index: int, state: RunState) -> RunResult:
         container = lookup_path(self.container, state)
-        if self.content in container:
-            return {**state, index: {"success": True}}
-        else:
+
+        content_present = self.content in container
+
+        if content_present == self.invert:
             return RunError(
                 case=self.tag(),
                 step=index,
                 details={
                     "content": self.content,
                     "container": container,
+                    "error": "expected content to be " + "absent"
+                    if self.invert
+                    else "present",
                 },
             )
+        else:
+            return {**state, index: {"success": True}}
 
 
 def main():
@@ -323,12 +334,12 @@ def main():
     if os.path.isdir(args.test_path):
         glob_pattern = f"{args.test_path}/*.e2e.json"
         files = glob.glob(glob_pattern, recursive=True)
-        cases = list(map(lambda path: (path, Case.from_file), files))
+        cases = list(map(lambda path: (path, Case.from_file(path)), files))
     else:
         cases = [(args.test_path, Case.from_file(args.test_path))]
 
     for (path, case) in cases:
-        (success, results) = display_results(case)
+        (success, results) = display_results(case.evaluate())
         print(f"{path} - {results}")
 
 
