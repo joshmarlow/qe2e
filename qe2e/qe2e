@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+
+import qe2e.core
+
+qe2e.core.main()

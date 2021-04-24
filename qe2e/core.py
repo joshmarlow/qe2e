@@ -1,10 +1,12 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod, abstractproperty
+import argparse
 from dataclasses import dataclass
 from enum import Enum, auto
 import functools
 import json
 import subprocess
+import sys
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from bs4 import BeautifulSoup  # type: ignore
@@ -22,6 +24,26 @@ RunState = Dict[Any, Any]
 RunResult = Union[RunError, RunState]
 
 
+def display_results(result: RunResult):
+    if isinstance(result, RunError):
+        print(f"Error in step {result.step} ({result.case}) - {result.details}")
+        return 1
+    else:
+        print("Success!")
+        return 0
+
+
+class LookupError(Exception):
+    path: str
+
+    def __init__(self, path, *args, **kwargs):
+        self.path = path
+        super().__init__(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"Could not find data at path '{self.path}'"
+
+
 def lookup_path(path: str, dict_: Union[Any, Dict[str, Any]]) -> Any:
     """
     Recursively traverse a potentially nested dictionary
@@ -35,7 +57,10 @@ def lookup_path(path: str, dict_: Union[Any, Dict[str, Any]]) -> Any:
         if not p:
             return data
         else:
-            return _lookup(p[1:], data[p[0]])
+            try:
+                return _lookup(p[1:], data[p[0]])
+            except KeyError:
+                raise LookupError(p[0])
 
     return _lookup(path.split("."), dict_)
 
@@ -146,7 +171,7 @@ class GetUrl(Step):
             self.response_name: {
                 "status_code": response.status_code,
                 "html": {
-                    "title": soup.title.get_text(),
+                    "title": soup.title.get_text() if soup.title else None,
                     "content": soup.get_text(),
                 },
             },
@@ -227,7 +252,14 @@ class AssertEq(Step):
         return cls(**dict_)
 
     def evaluate(self, index: int, state: RunState) -> RunResult:
-        actual = lookup_path(self.actual, state)
+        try:
+            actual = lookup_path(self.actual, state)
+        except LookupError as e:
+            return RunError(
+                case=self.tag(),
+                step=index,
+                details=f"Could not find data at path '{self.actual}'",
+            )
         if actual == self.expected:
             return {**state, index: {"success": True}}
         else:
@@ -269,7 +301,17 @@ class AssertContains(Step):
             )
 
 
-if __name__ == "__main__":
-    import doctest
+def main():
+    parser = argparse.ArgumentParser(description="Runner for Quick End 2 End Tests")
+    parser.add_argument("test_path", type=str, help="Path to test file")
+    args = parser.parse_args()
 
-    doctest.testmod()
+    with open(args.test_path, "r") as fin:
+        config = json.loads(fin.read())
+        case = Case.from_dict(config)
+        results = case.evaluate()
+        sys.exit(display_results(results))
+
+
+if __name__ == "__main__":
+    main()
