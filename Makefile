@@ -5,7 +5,7 @@ PIP = pip3
 PROJECT = qe2e
 PYTHON = python3
 MIN_COVERAGE = 80
-VENV = ".venv"
+VENV = .venv
 VENV_PATH=.venv
 
 setup_ubuntu: ## Install Python, pip and venv on Ubuntu (sudo required)

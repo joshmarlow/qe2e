@@ -3,8 +3,10 @@ from abc import ABC, abstractmethod, abstractproperty
 import argparse
 from dataclasses import dataclass
 from enum import Enum, auto
+import glob
 import functools
 import json
+import os
 import subprocess
 import sys
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
@@ -24,13 +26,14 @@ RunState = Dict[Any, Any]
 RunResult = Union[RunError, RunState]
 
 
-def display_results(result: RunResult):
+def display_results(result: RunResult) -> Tuple[bool, str]:
     if isinstance(result, RunError):
-        print(f"Error in step {result.step} ({result.case}) - {result.details}")
-        return 1
+        return (
+            False,
+            f"FAILED - Error in step {result.step} ({result.case}) - {result.details}",
+        )
     else:
-        print("Success!")
-        return 0
+        return (True, "PASSED")
 
 
 class LookupError(Exception):
@@ -70,6 +73,11 @@ class Case:
     name: str
     tags: List[str]
     steps: List[Step]
+
+    @staticmethod
+    def from_file(path: str) -> Case:
+        with open(path, "r") as fin:
+            return Case.from_dict(json.loads(fin.read()))
 
     @staticmethod
     def from_dict(dict_: Dict[Any, Any]) -> Case:
@@ -306,11 +314,16 @@ def main():
     parser.add_argument("test_path", type=str, help="Path to test file")
     args = parser.parse_args()
 
-    with open(args.test_path, "r") as fin:
-        config = json.loads(fin.read())
-        case = Case.from_dict(config)
-        results = case.evaluate()
-        sys.exit(display_results(results))
+    if os.path.isdir(args.test_path):
+        glob_pattern = f"{args.test_path}/*.e2e.json"
+        files = glob.glob(glob_pattern, recursive=True)
+        cases = list(map(lambda path: (path, Case.from_file), files))
+    else:
+        cases = [(args.test_path, Case.from_file(args.test_path))]
+
+    for (path, case) in cases:
+        (success, results) = display_results(case)
+        print(f"{path} - {results}")
 
 
 if __name__ == "__main__":
