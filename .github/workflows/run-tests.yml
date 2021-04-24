@@ -1,0 +1,25 @@
+name: Run tests and check code quality
+on: [push]
+jobs:
+  quality:
+    name: Run tests and check code quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Run formatter
+        run: make formatter
+
+      - name: Run mypy
+        run: make mypy
+
+      - name: Run tests
+        run: make test
+
+      - name: Check coverage
+        run: make coverage
