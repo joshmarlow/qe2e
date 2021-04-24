@@ -26,14 +26,20 @@ RunState = Dict[Any, Any]
 RunResult = Union[RunError, RunState]
 
 
+class Colors:
+    PASS = "\033[92m"
+    FAIL = "\033[91m"
+
+
 def display_results(result: RunResult) -> Tuple[bool, str]:
+    failed_message = Colors.FAIL + "FAILED"
     if isinstance(result, RunError):
         return (
             False,
-            f"FAILED - Error in step {result.step} ({result.case}) - {result.details}",
+            f"{failed_message} - Error in step {result.step} ({result.case}) - {result.details}",
         )
     else:
-        return (True, "PASSED")
+        return (True, Colors.PASS + "PASSED")
 
 
 class LookupError(Exception):
